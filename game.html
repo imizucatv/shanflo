@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シャングリラ・フロンティア ～最強種討伐タッグバトル～ 完全版</title>
+<style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #1a1a1a; color: #fff; text-align: center; margin: 0; padding: 20px; overflow-x: hidden; }
+    .screen { display: none; max-width: 640px; margin: 0 auto; background: #2a2a2a; padding: 20px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.8); position: relative; }
+    .active { display: block; }
+    h1, h2, h3 { color: #00d2ff; }
+    button { background: #007bff; color: white; border: none; padding: 10px 16px; margin: 5px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; }
+    button:hover { background: #0056b3; transform: scale(1.05); }
+    button:disabled { background: #555; cursor: not-allowed; transform: none; opacity: 0.6; }
+    .btn-warning { background: #d39e00; }
+    .btn-warning:hover { background: #b08400; }
+    .btn-danger { background: #dc3545; }
+    .btn-danger:hover { background: #a71d2a; }
+    .btn-boss { background: #6f42c1; }
+    .btn-boss:hover { background: #59339d; }
+    .btn-sub { background: #495057; font-size: 12px; padding: 6px 12px; }
+    .btn-sub:hover { background: #343a40; }
+    .btn-unison { background: #ff00ff; border: 2px solid #fff; box-shadow: 0 0 10px #ff00ff; animation: pulse-unison 1s infinite; }
+    
+    .char-img-fallback { border-radius: 50%; background: #444; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #00d2ff; font-size: 11px; font-weight: bold; color: #ccc; text-align: center; line-height: 1.2; box-sizing: border-box; }
+    .enemy-img-fallback { border-radius: 10px; background: #662222; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #ff3333; font-size: 12px; font-weight: bold; color: #ffcccc; text-align: center; line-height: 1.2; box-sizing: border-box; }
+    img { object-fit: cover; }
+
+    .char-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+    .char-card { background: #333; padding: 10px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: 0.15s; }
+    .char-card:hover { background: #3c3c3c; }
+    .char-card.selected { border-color: #00d2ff; background: #444; }
+
+    .battle-area { display: flex; justify-content: space-between; margin-bottom: 15px; }
+    .party-area, .enemy-area { width: 48%; background: #333; padding: 10px; border-radius: 8px; box-sizing: border-box; }
+    .status-bar { background: #555; height: 10px; border-radius: 5px; margin-top: 5px; overflow: hidden; position: relative; }
+    .hp-fill { background: #28a745; height: 100%; width: 100%; transition: 0.3s; }
+    .unison-fill { background: #ff00ff; height: 100%; width: 0%; transition: 0.3s; }
+    .aggro-marker { color: #ff3333; font-size: 12px; font-weight: bold; animation: pulse 1s infinite; }
+    .state-badge { display: inline-block; background: #dc3545; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; font-weight: bold; }
+
+    .qte-container { width: 100%; height: 30px; background: #444; position: relative; border-radius: 15px; overflow: hidden; margin: 15px 0; border: 2px solid #fff; box-sizing: border-box; }
+    .qte-target { position: absolute; height: 100%; background: rgba(40, 167, 69, 0.75); }
+    .qte-target.defend { background: rgba(220, 53, 69, 0.75); }
+    .qte-cursor { position: absolute; height: 100%; width: 6px; background: #fff; top: 0; box-shadow: 0 0 6px #fff; transform: translateX(-3px); }
+
+    .log-area { height: 130px; overflow-y: auto; background: #111; padding: 10px; border-radius: 5px; font-size: 13px; text-align: left; margin-top: 15px; }
+    
+    /* カットイン演出（背後のボタン操作を邪魔しないよう pointer-events: none を設定） */
+    .cutin { position: absolute; top: 28%; left: 0; width: 100%; background: rgba(0,0,0,0.88); border-top: 3px solid #00d2ff; border-bottom: 3px solid #00d2ff; padding: 15px 0; display: none; z-index: 10; animation: slideIn 0.25s ease-out; pointer-events: none; }
+    .cutin-inner { display: flex; align-items: center; justify-content: center; gap: 15px; padding: 0 15px; }
+    .cutin-text { font-size: 17px; font-weight: bold; color: #fff; text-shadow: 2px 2px 0 #000; }
+    
+    .panel { background: #333; padding: 10px; border-radius: 8px; margin-bottom: 12px; text-align: left; }
+    .badge { display: inline-block; background: #ffc107; color: #000; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin: 2px; }
+
+    /* --- ドット絵アニメーション --- */
+    @keyframes idle { 0% { transform: translateY(0px); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0px); } }
+    .anim-idle { animation: idle 2s infinite ease-in-out; display: inline-block; }
+    
+    @keyframes attack-p { 0% { transform: translateX(0); } 40% { transform: translateX(28px) scale(1.1); } 100% { transform: translateX(0); } }
+    .anim-attack-p { animation: attack-p 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: inline-block; }
+    
+    @keyframes attack-e { 0% { transform: translateX(0); } 40% { transform: translateX(-28px) scale(1.1); } 100% { transform: translateX(0); } }
+    .anim-attack-e { animation: attack-e 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: inline-block; }
+    
+    @keyframes damage {
+        0% { transform: translateX(0); filter: brightness(1); }
+        20% { transform: translateX(-6px); filter: brightness(0.6) sepia(1) hue-rotate(-50deg) saturate(5); }
+        40% { transform: translateX(6px); }
+        60% { transform: translateX(-6px); filter: brightness(0.6) sepia(1) hue-rotate(-50deg) saturate(5); }
+        80% { transform: translateX(6px); }
+        100% { transform: translateX(0); filter: brightness(1); }
+    }
+    .anim-damage { animation: damage 0.4s; display: inline-block; }
+
+    @keyframes shake { 0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); } 40% { transform: translate(1px, -2px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } 100% { transform: translate(0px, 0px); } }
+    .shake-effect { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+    
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    @keyframes pulse-unison { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    @keyframes slideIn { from { transform: translateX(-40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .boss-charging { background-color: #5a0000 !important; border: 3px solid #ff0000; animation: pulse 0.5s infinite; }
+</style>
+</head>
+<body>
+
+<!-- タイトル画面 -->
+<div id="title-screen" class="screen active">
+    <h1>シャングリラ・フロンティア<br>～最強種討伐タッグバトル～</h1>
+    <p>難易度を選択してください</p>
+    <button onclick="startGame('enjoy')">エンジョイ (やさしい)</button>
+    <button class="btn-warning" onclick="startGame('normal')">ノーマル (ふつう)</button>
+    <button class="btn-danger" onclick="startGame('kusoge')">クソゲー (激ムズ)</button>
+    <br><br>
+    <label style="cursor:pointer;"><input type="checkbox" id="spoiler-check"> ネタバレあり（最強種4〜7体目を解放）</label>
+</div>
+
+<!-- キャラ選択画面 -->
+<div id="select-screen" class="screen">
+    <h2>タッグを2人選べ！</h2>
+    <div class="char-grid" id="char-list"></div>
+    <button onclick="confirmParty()" id="btn-confirm-party" disabled>決定</button>
+    <button class="btn-sub" onclick="backToTitle()">タイトルへ戻る</button>
+</div>
+
+<!-- メニュー画面 -->
+<div id="menu-screen" class="screen">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0;">ベースキャンプ</h2>
+        <button class="btn-sub" onclick="backToTitle()">タイトルへ戻る</button>
+    </div>
+    <p style="font-size:12px; color:#aaa; margin:5px 0 10px;">現在の難易度：<span id="current-diff-label" style="color:#fff; font-weight:bold;"></span></p>
+    
+    <div class="battle-area" style="margin-bottom:10px;">
+        <div class="party-area" id="menu-party" style="width:100%; display:flex; justify-content:space-around;"></div>
+    </div>
+    
+    <div class="panel">
+        <span style="color:#00d2ff; font-weight:bold;">所持素材:</span> <span id="material-count">0</span> 個 
+        <button onclick="upgradeWeapon()" style="padding:5px 10px; font-size:12px;">武器強化(素材3)</button>
+    </div>
+    
+    <div class="panel">
+        <div style="color:#ffc107; font-weight:bold; margin-bottom:5px;">装備変更（ユニーク武具）</div>
+        <select id="equip-select" onchange="changeEquip()" style="width:100%; padding:6px; background:#444; color:#fff; border:1px solid #777; border-radius:4px;"></select>
+        <div id="equip-desc" style="font-size:12px; color:#ccc; margin-top:5px;">効果：追加効果なし</div>
+    </div>
+
+    <div class="panel" id="title-panel" style="display:none;">
+        <div style="color:#ffeb3b; font-weight:bold; margin-bottom:5px;">獲得した称号</div>
+        <div id="title-list"></div>
+    </div>
+
+    <hr style="border-color:#555;">
+    <h3 style="margin-bottom:5px;">通常モンスター討伐</h3>
+    <div id="normal-quest-list"></div>
+    <h3 style="margin-bottom:5px;">七つの最強種（ユニークモンスター）</h3>
+    <div id="boss-quest-list"></div>
+</div>
+
+<!-- バトル画面 -->
+<div id="battle-screen" class="screen">
+    <div id="cutin-dialogue" class="cutin">
+        <div class="cutin-inner">
+            <div id="cutin-img"></div>
+            <div id="cutin-text" class="cutin-text"></div>
+        </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h2 id="battle-title" style="margin:0; font-size:18px;">VS モンスター</h2>
+        <button class="btn-sub" onclick="retreatBattle()">撤退する</button>
+    </div>
+
+    <div class="battle-area">
+        <div class="party-area" id="battle-party"></div>
+        <div class="enemy-area" id="battle-enemy"></div>
+    </div>
+    
+    <div style="text-align:left; font-size:12px; margin-bottom:10px; color:#ff00ff; font-weight:bold;">
+        ユニゾン・ゲージ (<span id="unison-text">0</span>%)
+        <div class="status-bar" style="height:14px; border:1px solid #fff;"><div class="unison-fill" id="unison-bar"></div></div>
+    </div>
+    
+    <div id="qte-area" style="display:none;">
+        <h3 id="qte-message" style="color: #ffeb3b; margin:5px 0;">タイミングを合わせろ！</h3>
+        <div class="qte-container">
+            <div class="qte-target" id="qte-target"></div>
+            <div class="qte-cursor" id="qte-cursor"></div>
+        </div>
+        <button onclick="stopQTE()" style="padding:12px 32px; font-size:18px;">タップ！</button>
+    </div>
+
+    <div id="command-area">
+        <div id="current-actor-name" style="font-weight:bold; margin-bottom:10px; color:#00d2ff; font-size:16px;"></div>
+        <div id="action-btns">
+            <button onclick="showTargets('attack')">攻撃 (部位狙い)</button>
+            <button onclick="showSkills()">スキル</button>
+            <button id="btn-item" onclick="useItem()">回復薬</button>
+            <button id="btn-unison" class="btn-unison" style="display:none;" onclick="useUnison()">合体必殺技(ユニゾン)</button>
+        </div>
+        <div id="target-btns" style="display:none;">
+            <button onclick="startQTE('head')">頭部 (クリ大)</button>
+            <button onclick="startQTE('body')">胴体 (安定)</button>
+            <button onclick="startQTE('arm')">腕 (阻止/弱体)</button>
+            <button onclick="cancelAction()">戻る</button>
+        </div>
+        <div id="skill-btns" style="display:none;"></div>
+    </div>
+
+    <div class="log-area" id="battle-log"></div>
+</div>
+
+<script>
+// --- データ定義（すべて .jpeg 対応） ---
+const chars = [
+    { id: 'sunraku', name: 'サンラク', img: 'images/sanraku.jpeg', maxHp: 30, hp: 30, atk: 42, luk: 90, aggro: 0, 
+      quotes: { start: "よし、クソゲーの時間だ！", pinch: "死ななきゃノーダメージだろ！" },
+      skills: [{name: '致命の三日月', type: 'crit', maxUses: 3}, {name: 'パリィ', type: 'parry', maxUses: 2}] },
+    { id: 'oikatzo', name: 'オイカッツォ', img: 'images/oikatzo.jpeg', maxHp: 100, hp: 100, atk: 26, luk: 40, aggro: 0,
+      quotes: { start: "プロゲーマーの意地、見せてやるよ", pinch: "これ、完全に初見殺しじゃん..." },
+      skills: [{name: '連撃拳', type: 'double', maxUses: 3}] },
+    { id: 'pencilgon', name: 'ペンシルゴン', img: 'images/pencilgon.jpeg', maxHp: 90, hp: 90, atk: 22, luk: 50, aggro: 0,
+      quotes: { start: "さぁ、外道プレイの始まりだよ！", pinch: "あらあら、計算外の事態だねぇ" },
+      skills: [{name: '弱点看破', type: 'debuff', maxUses: 3}] },
+    { id: 'saiga0', name: 'サイガー0', img: 'images/saiga0.jpeg', maxHp: 200, hp: 200, atk: 55, luk: 10, aggro: 0,
+      quotes: { start: "私が、道を切り開きます！", pinch: "くっ、まだ倒れるわけには...！" },
+      skills: [{name: '騎士の守護', type: 'guard', maxUses: 2}, {name: 'アルマゲドン', type: 'armageddon', maxUses: 1}] },
+    { id: 'emul', name: 'エムル', img: 'images/emul.jpeg', maxHp: 80, hp: 80, atk: 16, luk: 70, aggro: 0,
+      quotes: { start: "サンラクサン、がんばるですわ！", pinch: "ひえぇぇ！食べられちゃうですわ！" },
+      skills: [{name: 'テレポート支援', type: 'heal', maxUses: 2}] },
+    { id: 'akane', name: '秋津茜', img: 'images/akitsu.jpeg', maxHp: 85, hp: 85, atk: 32, luk: 60, aggro: 0,
+      quotes: { start: "ニンニン！秋津茜、推参！", pinch: "あわわ、忍術が足りないですー！" },
+      skills: [{name: '竜の息吹', type: 'double', maxUses: 3}, {name: '忍法・影分身', type: 'parry', maxUses: 2}] },
+    { id: 'bilac', name: 'ビィラック', img: 'images/bilac.jpeg', maxHp: 120, hp: 120, atk: 30, luk: 30, aggro: 0,
+      quotes: { start: "アタシの鍛えた武器のサビにしてやるさ", pinch: "ちぃっ、硬い装甲してやがるぜ" },
+      skills: [{name: '緊急鍛冶強化', type: 'buff', maxUses: 2}] },
+    { id: 'rust', name: 'ルスト', img: 'images/rust.jpeg', maxHp: 95, hp: 95, atk: 34, luk: 45, aggro: 0,
+      quotes: { start: "全砲門、ロックオン完了", pinch: "機体の損傷率、危険域を突破..." },
+      skills: [{name: '精密ロックオン', type: 'crit', maxUses: 3}] }
+];
+
+const enemiesData = [
+    // 通常モンスター 5体
+    { name: 'ゴブリン群れ', img: 'images/goblin.jpeg', maxHp: 140, atk: 14, isBoss: false, spoiler: false },
+    { name: 'ヴォーパルバニー', img: 'images/bunny.jpeg', maxHp: 180, atk: 22, isBoss: false, spoiler: false },
+    { name: '泥掘り（マッドディグ）', img: 'images/mud_dig.jpeg', maxHp: 230, atk: 20, isBoss: false, spoiler: false },
+    { name: '水晶群蠍', img: 'images/scorpion.jpeg', maxHp: 280, atk: 25, isBoss: false, spoiler: false },
+    { name: '貪食の大蛇', img: 'images/snake.jpeg', maxHp: 340, atk: 28, isBoss: false, spoiler: false },
+    
+    // 七つの最強種（1〜3）
+    { name: '墓守のウェザエモン', img: 'images/wezaemon.jpeg', maxHp: 800, atk: 48, isBoss: true, spoiler: false, ult: '天晴', 
+      quote: "見事……いざ、尋常に勝負！", drop: {id: 'sange', name: '名刀・散華', desc: '全員のクリティカル威力1.5倍'} },
+    { name: '夜襲のリュカオーン', img: 'images/lycaon.jpeg', maxHp: 950, atk: 55, isBoss: true, spoiler: false, ult: '分身の呪撃',
+      quote: "（漆黒の狼が静かにこちらを見下ろしている）", drop: {id: 'lycaon_mark', name: '呪いのマーキング', desc: '全員のHP上限半減、攻撃力2倍'} },
+    { name: '深淵のクターニッド', img: 'images/ctarnidd.jpeg', maxHp: 1100, atk: 52, isBoss: true, spoiler: false, ult: '深淵反転・大渦潮',
+      quote: "反転セヨ……全テヲ反転セヨ……", drop: {id: 'ctarnidd_eye', name: '深淵の瞳', desc: 'ジャスト回避の猶予時間延長'} },
+    
+    // 七つの最強種（4〜7：ネタバレありで解放）
+    { name: '天覇のジークヴルム', img: 'images/siegwurm.jpeg', maxHp: 1300, atk: 62, isBoss: true, spoiler: true, ult: '天覇の竜閃' },
+    { name: '冥響のオルケストラ', img: 'images/orchestra.jpeg', maxHp: 1250, atk: 58, isBoss: true, spoiler: true, ult: '終焉の交響曲' },
+    { name: '無尽のゴルドゥニーネ', img: 'images/goldunine.jpeg', maxHp: 1400, atk: 65, isBoss: true, spoiler: true, ult: '無尽の蛇毒嵐' },
+    { name: '不滅のヴァイスアッシュ', img: 'images/vyseash.jpeg', maxHp: 1600, atk: 70, isBoss: true, spoiler: true, ult: '兎王の真打・一閃' }
+];
+
+// --- グローバル変数 ---
+let difficulty = 'enjoy';
+let spoiler = false;
+let selectedIds = [];
+let party = [];
+let materials = 0;
+let currentEnemy = null;
+let currentTurn = 0;
+let battlePotions = 3; 
+let isBattleActive = false;
+
+let qteActive = false;
+let qtePos = 0;
+let qteDir = 1;
+let qteSpeed = 2;
+let qteFrame = null;
+let activeAction = {};
+
+let unisonGauge = 0;
+let inventoryEquips = [{id: 'none', name: '装備なし', desc: '追加効果なし'}];
+let currentEquipId = 'none';
+let unlockedTitles = [];
+let b_noDamage = true;
+let b_noItem = true;
+
+// --- 画像フォールバック関数 ---
+function handleImgError(imgEl, name, isEnemy, size) {
+    const div = document.createElement('div');
+    div.className = isEnemy ? 'enemy-img-fallback' : 'char-img-fallback';
+    div.style.width = size + 'px';
+    div.style.height = size + 'px';
+    div.innerText = name;
+    imgEl.replaceWith(div);
+}
+
+// --- ユーティリティ ---
+function log(msg, color = "#fff") {
+    const logArea = document.getElementById('battle-log');
+    logArea.innerHTML += `<div style="color:${color}; margin-bottom:4px;">${msg}</div>`;
+    logArea.scrollTop = logArea.scrollHeight;
+}
+
+function shakeScreen() {
+    const body = document.body;
+    body.classList.remove('shake-effect');
+    void body.offsetWidth;
+    body.classList.add('shake-effect');
+}
+
+function playAnim(targetId, animClass) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    el.classList.remove('anim-idle', 'anim-attack-p', 'anim-attack-e', 'anim-damage');
+    void el.offsetWidth;
+    el.classList.add(animClass);
+    setTimeout(() => {
+        if (el) {
+            el.classList.remove(animClass);
+            el.classList.add('anim-idle');
+        }
+    }, 400);
+}
+
+function showCutin(imgSrc, name, text) {
+    const box = document.getElementById('cutin-dialogue');
+    const imgContainer = document.getElementById('cutin-img');
+    imgContainer.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.style.cssText = 'width:56px; height:56px; border-radius:50%; border:2px solid #00d2ff;';
+    img.onerror = function() { handleImgError(this, name, false, 56); };
+    imgContainer.appendChild(img);
+
+    document.getElementById('cutin-text').innerText = text;
+    box.style.display = 'block';
+    setTimeout(() => { box.style.display = 'none'; }, 2400);
+}
+
+// --- 画面遷移 ---
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function backToTitle() {
+    isBattleActive = false;
+    qteActive = false;
+    if (qteFrame) cancelAnimationFrame(qteFrame);
+    showScreen('title-screen');
+}
+
+function startGame(diff) {
+    difficulty = diff;
+    spoiler = document.getElementById('spoiler-check').checked;
+    selectedIds = [];
+    document.getElementById('btn-confirm-party').disabled = true;
+    renderCharSelect();
+    showScreen('select-screen');
+}
+
+function renderCharSelect() {
+    const list = document.getElementById('char-list');
+    list.innerHTML = chars.map(c => `
+        <div class="char-card" id="char-card-${c.id}" onclick="toggleSelect('${c.id}')">
+            <img src="${c.img}" onerror="handleImgError(this, '${c.name}', false, 60)" style="width:60px; height:60px; border-radius:50%;">
+            <div style="font-weight:bold; margin-top:4px;">${c.name}</div>
+            <div style="font-size:12px; color:#aaa;">HP:${c.maxHp} ATK:${c.atk} LUK:${c.luk}</div>
+        </div>
+    `).join('');
+}
+
+function toggleSelect(id) {
+    const el = document.getElementById(`char-card-${id}`);
+    if (selectedIds.includes(id)) {
+        selectedIds = selectedIds.filter(i => i !== id);
+        el.classList.remove('selected');
+    } else if (selectedIds.length < 2) {
+        selectedIds.push(id);
+        el.classList.add('selected');
+    }
+    document.getElementById('btn-confirm-party').disabled = selectedIds.length !== 2;
+}
+
+function confirmParty() {
+    party = selectedIds.map(id => JSON.parse(JSON.stringify(chars.find(c => c.id === id))));
+    renderMenu();
+    showScreen('menu-screen');
+}
+
+// --- メニュー・装備 ---
+function renderMenu() {
+    const diffNames = { enjoy: 'エンジョイ (やさしい)', normal: 'ノーマル (ふつう)', kusoge: 'クソゲー (激ムズ)' };
+    document.getElementById('current-diff-label').innerText = diffNames[difficulty];
+    document.getElementById('material-count').innerText = materials;
+
+    const equipSelect = document.getElementById('equip-select');
+    equipSelect.innerHTML = inventoryEquips.map(eq => `<option value="${eq.id}" ${currentEquipId === eq.id ? 'selected' : ''}>${eq.name}</option>`).join('');
+    changeEquip();
+
+    if (unlockedTitles.length > 0) {
+        document.getElementById('title-panel').style.display = 'block';
+        document.getElementById('title-list').innerHTML = unlockedTitles.map(t => `<span class="badge">${t}</span>`).join('');
+    }
+
+    document.getElementById('normal-quest-list').innerHTML = '';
+    document.getElementById('boss-quest-list').innerHTML = '';
+    enemiesData.forEach((e, idx) => {
+        if (e.spoiler && !spoiler) return;
+        const btn = document.createElement('button');
+        btn.innerText = e.name;
+        btn.onclick = () => startBattle(idx);
+        if (e.isBoss) { btn.className = 'btn-boss'; document.getElementById('boss-quest-list').appendChild(btn); }
+        else { document.getElementById('normal-quest-list').appendChild(btn); }
+    });
+}
+
+function renderMenuParty() {
+    const hpMult = currentEquipId === 'lycaon_mark' ? 0.5 : 1.0;
+    const atkMult = currentEquipId === 'lycaon_mark' ? 2.0 : 1.0;
+
+    document.getElementById('menu-party').innerHTML = party.map(p => {
+        const dispHp = Math.floor(p.maxHp * hpMult);
+        const dispAtk = Math.floor(p.atk * atkMult);
+        return `
+        <div style="text-align:center;">
+            <img src="${p.img}" onerror="handleImgError(this, '${p.name}', false, 50)" style="width:50px; height:50px; border-radius:50%;">
+            <div style="font-size:13px; font-weight:bold;">${p.name}</div>
+            <div style="font-size:11px; color:#aaa;">HP:${dispHp} / ATK:${dispAtk}</div>
+        </div>`;
+    }).join('');
+}
+
+function changeEquip() {
+    currentEquipId = document.getElementById('equip-select').value;
+    const eq = inventoryEquips.find(e => e.id === currentEquipId);
+    document.getElementById('equip-desc').innerText = `効果：${eq.desc}`;
+    renderMenuParty();
+}
+
+function upgradeWeapon() {
+    if (materials >= 3) {
+        materials -= 3;
+        party.forEach(p => { p.atk += 8; if (p.id !== 'sunraku') p.maxHp += 10; p.hp = p.maxHp; });
+        alert('ビィラックの鍛冶で武器が強化された！（攻撃力UP）');
+        renderMenu();
+    } else { alert('素材が足りません！（モンスターを倒して3個集めよう）'); }
+}
+
+// --- バトルシステム ---
+function startBattle(enemyIdx) {
+    isBattleActive = true;
+    currentEnemy = JSON.parse(JSON.stringify(enemiesData[enemyIdx]));
+    currentEnemy.hp = currentEnemy.maxHp;
+    currentEnemy.charge = false;
+    currentEnemy.cloneActive = false;
+    currentEnemy.invertMsg = false;
+    
+    const eqHpMult = currentEquipId === 'lycaon_mark' ? 0.5 : 1.0;
+    const eqAtkMult = currentEquipId === 'lycaon_mark' ? 2.0 : 1.0;
+
+    party.forEach(p => { 
+        p.currentMaxHp = Math.max(1, Math.floor(p.maxHp * eqHpMult));
+        p.hp = p.currentMaxHp; 
+        p.currentAtk = Math.floor(p.atk * eqAtkMult);
+        p.aggro = 0; p.parry = false; p.guard = false; p.tempAtk = 0;
+        p.skills.forEach(s => { s.uses = s.maxUses; });
+    });
+
+    currentTurn = 0;
+    battlePotions = 3; 
+    unisonGauge = 0;
+    b_noDamage = true;
+    b_noItem = true;
+
+    // 前戦のUI残存を確実にリセット
+    document.getElementById('btn-unison').style.display = 'none';
+    document.getElementById('qte-area').style.display = 'none';
+    document.getElementById('command-area').style.display = 'none';
+    document.getElementById('battle-title').innerText = `VS ${currentEnemy.name}`;
+    document.getElementById('battle-log').innerHTML = '';
+    
+    updateBattleUI();
+    showScreen('battle-screen');
+    
+    if (currentEnemy.quote) {
+        showCutin(currentEnemy.img, currentEnemy.name, currentEnemy.quote);
+        setTimeout(() => { 
+            if (!isBattleActive) return;
+            log(`${currentEnemy.name} が現れた！`, '#ff3333'); 
+            processTurn(); 
+        }, 1800);
+    } else {
+        log(`${currentEnemy.name} が現れた！`, '#ff3333');
+        processTurn();
+    }
+}
+
+function retreatBattle() {
+    if (!confirm('バトルを中断してベースキャンプへ戻りますか？')) return;
+    isBattleActive = false;
+    qteActive = false;
+    if (qteFrame) cancelAnimationFrame(qteFrame);
+    renderMenu();
+    showScreen('menu-screen');
+}
+
+function addUnison(val) {
+    unisonGauge = Math.min(100, unisonGauge + val);
+    document.getElementById('unison-bar').style.width = unisonGauge + '%';
+    document.getElementById('unison-text').innerText = unisonGauge;
+}
+
+function updateBattleUI() {
+    document.getElementById('battle-party').innerHTML = party.map((p, idx) => {
+        const dispHp = Math.max(0, p.hp);
+        const hpPer = Math.max(0, (dispHp / p.currentMaxHp) * 100);
+        const opac = dispHp <= 0 ? '0.35' : '1';
+        return `
+            <div style="margin-bottom:10px; opacity:${opac};">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div id="anim-p-${idx}" class="anim-idle">
+                        <img src="${p.img}" onerror="handleImgError(this, '${p.name}', false, 44)" style="width:44px; height:44px; border-radius:50%;">
+                    </div>
+                    <div style="text-align:left; flex-grow:1;">
+                        <div style="font-size:13px; font-weight:bold;">${p.name} ${p.aggro>0?'<span class="aggro-marker">🔥</span>':''}</div>
+                        <div class="status-bar"><div class="hp-fill" style="width:${hpPer}%; ${hpPer<30?'background:#dc3545':''}"></div></div>
+                        <div style="font-size:11px;">HP: ${dispHp}/${p.currentMaxHp}</div>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+
+    const dispEnemyHp = Math.max(0, currentEnemy.hp);
+    const eHpPer = Math.max(0, (dispEnemyHp / currentEnemy.maxHp) * 100);
+    
+    let stateBadges = '';
+    if (currentEnemy.charge) stateBadges += `<span class="state-badge">⚠大技チャージ中</span> `;
+    if (currentEnemy.cloneActive) stateBadges += `<span class="state-badge" style="background:#6f42c1;">分身展開中</span> `;
+    if (currentEnemy.invertMsg) stateBadges += `<span class="state-badge" style="background:#d63384;">深淵反転中</span> `;
+
+    document.getElementById('battle-enemy').innerHTML = `
+        <div style="text-align:center;">
+            <div class="${currentEnemy.charge ? 'boss-charging' : ''}" style="display:inline-block; border-radius:10px; padding:2px;">
+                <div id="anim-e" class="anim-idle">
+                    <img src="${currentEnemy.img}" onerror="handleImgError(this, '${currentEnemy.name}', true, 100)" style="width:100px; height:100px; border-radius:10px;">
+                </div>
+            </div>
+            <div style="font-size:15px; font-weight:bold; margin-top:5px;">${currentEnemy.name}</div>
+            <div>${stateBadges}</div>
+            <div class="status-bar"><div class="hp-fill" style="background:#dc3545; width:${eHpPer}%"></div></div>
+            <div style="font-size:12px;">HP: ${dispEnemyHp}/${currentEnemy.maxHp}</div>
+        </div>`;
+
+    document.getElementById('unison-bar').style.width = unisonGauge + '%';
+    document.getElementById('unison-text').innerText = unisonGauge;
+}
+
+function checkWinLoss() {
+    if (currentEnemy.hp <= 0) {
+        isBattleActive = false;
+        updateBattleUI();
+        shakeScreen();
+        playAnim('anim-e', 'anim-damage');
+        log(`【討伐成功！】${currentEnemy.name} を撃破した！`, '#00d2ff');
+        
+        let reward = currentEnemy.isBoss ? 3 : 2;
+        let msgs = [`素材を${reward}個ゲットした！`];
+        materials += reward;
+
+        if (currentEnemy.drop && !inventoryEquips.find(e => e.id === currentEnemy.drop.id)) {
+            inventoryEquips.push(currentEnemy.drop);
+            msgs.push(`★ユニーク装備【${currentEnemy.drop.name}】を獲得した！`);
+        }
+
+        function grantTitle(title) {
+            if (!unlockedTitles.includes(title)) { unlockedTitles.push(title); msgs.push(`🏅称号【${title}】を獲得！`); }
+        }
+        if (b_noDamage) grantTitle("完全無傷の生還者");
+        if (b_noItem) grantTitle("ノーアイテムクリア");
+        if (currentEnemy.name === '不滅のヴァイスアッシュ') grantTitle("不滅を退けし者");
+
+        setTimeout(() => { alert(msgs.join('\n')); renderMenu(); showScreen('menu-screen'); }, 1800);
+        return true;
+    }
+    if (party[0].hp <= 0 && party[1].hp <= 0) {
+        isBattleActive = false;
+        updateBattleUI();
+        log(`【敗北...】パーティは全滅した...`, '#dc3545');
+        setTimeout(() => { renderMenu(); showScreen('menu-screen'); }, 1800);
+        return true;
+    }
+    return false;
+}
+
+function processTurn() {
+    if (!isBattleActive) return;
+    updateBattleUI();
+    document.getElementById('command-area').style.display = 'none';
+    
+    if (checkWinLoss()) return;
+
+    if (currentTurn < 2) {
+        const actor = party[currentTurn];
+        if (actor.hp <= 0) { currentTurn++; processTurn(); return; }
+        
+        document.getElementById('command-area').style.display = 'block';
+        document.getElementById('current-actor-name').innerText = `▶ ${actor.name} のターン`;
+        document.getElementById('btn-item').innerText = `回復薬 (残${battlePotions})`;
+        document.getElementById('btn-item').disabled = (battlePotions <= 0);
+        
+        // 2人とも生存しており、ゲージが100%の時のみ合体技ボタンを表示
+        const unisonBtn = document.getElementById('btn-unison');
+        if (unisonGauge >= 100 && party[0].hp > 0 && party[1].hp > 0) {
+            unisonBtn.style.display = 'inline-block';
+        } else {
+            unisonBtn.style.display = 'none';
+        }
+
+        cancelAction();
+    } else {
+        enemyAction();
+    }
+}
+
+// --- コマンド＆スキル ---
+function showTargets(type) {
+    activeAction = { type: type };
+    document.getElementById('action-btns').style.display = 'none';
+    document.getElementById('target-btns').style.display = 'block';
+}
+function showSkills() {
+    const actor = party[currentTurn];
+    document.getElementById('skill-btns').innerHTML = actor.skills.map((s, idx) => 
+        `<button onclick="useSkill(${idx})" ${s.uses <= 0 ? 'disabled' : ''}>${s.name} (残${s.uses})</button>`
+    ).join('') + `<button onclick="cancelAction()">戻る</button>`;
+    document.getElementById('action-btns').style.display = 'none';
+    document.getElementById('skill-btns').style.display = 'block';
+}
+function cancelAction() {
+    document.getElementById('action-btns').style.display = 'block';
+    document.getElementById('target-btns').style.display = 'none';
+    document.getElementById('skill-btns').style.display = 'none';
+}
+
+function useSkill(skillIdx) {
+    const actor = party[currentTurn];
+    const skill = actor.skills[skillIdx];
+    if (skill.uses <= 0) return;
+    skill.uses--;
+    log(`${actor.name} のスキル【${skill.name}】！`, '#00d2ff');
+
+    if (skill.type === 'parry') { actor.parry = true; actor.aggro += 50; log(`見切りの構えを取り、ヘイトが上昇！`); endPlayerTurn(); } 
+    else if (skill.type === 'guard') { actor.guard = true; actor.aggro += 120; log(`味方を庇う構え！ヘイトを全て引き受けた！`); endPlayerTurn(); } 
+    else if (skill.type === 'heal') { party.forEach(p => { if(p.hp > 0) p.hp = Math.min(p.currentMaxHp, p.hp + 45); }); log(`味方全員のHPが回復！`, '#28a745'); endPlayerTurn(); } 
+    else if (skill.type === 'buff') { party.forEach(p => { if(p.hp > 0) p.tempAtk = (p.tempAtk || 0) + 15; }); log(`全員の攻撃力がアップ！`, '#ffeb3b'); endPlayerTurn(); } 
+    else if (skill.type === 'crit') { activeAction = { type: 'attack', forceCrit: true, part: 'head' }; startQTE('head', 2.0); } 
+    else if (skill.type === 'double') { activeAction = { type: 'attack', double: true, part: 'body' }; startQTE('body', 1.8); } 
+    else if (skill.type === 'armageddon') { activeAction = { type: 'attack', armageddon: true, part: 'body' }; startQTE('body', 3.5); } 
+    else if (skill.type === 'debuff') {
+        currentEnemy.atk = Math.max(5, currentEnemy.atk - 12);
+        log(`${currentEnemy.name} の攻撃力がダウンした！`);
+        if (currentEnemy.cloneActive) { currentEnemy.cloneActive = false; log(`【看破】リュカオーンの分身を見破った！`, '#ffeb3b'); }
+        endPlayerTurn();
+    }
+}
+
+function useItem() {
+    if (battlePotions <= 0) return;
+    battlePotions--; b_noItem = false;
+    party[currentTurn].hp = party[currentTurn].currentMaxHp;
+    log(`${party[currentTurn].name} は回復薬を使い、HPが全回復した！`, '#28a745');
+    endPlayerTurn();
+}
+
+function useUnison() {
+    if (unisonGauge < 100 || party[0].hp <= 0 || party[1].hp <= 0) return;
+    unisonGauge = 0;
+    document.getElementById('btn-unison').style.display = 'none';
+    updateBattleUI();
+
+    const ids = [party[0].id, party[1].id];
+    let title = "フル・ユニゾンアタック！";
+    let dmg = Math.floor((party[0].currentAtk + party[1].currentAtk) * 2.5);
+
+    if (ids.includes('sunraku') && ids.includes('saiga0')) {
+        title = "神速の陽動＆最大火力一閃！"; dmg = Math.floor(dmg * 1.5);
+    } else if (ids.includes('sunraku') && ids.includes('oikatzo')) {
+        title = "外道連携・弱点ラッシュ！"; currentEnemy.atk = Math.max(5, currentEnemy.atk - 15);
+    } else if (ids.includes('sunraku') && ids.includes('emul')) {
+        title = "致命兎と鳥頭の連撃！"; currentEnemy.stunned = true;
+    }
+    
+    playAnim('anim-p-0', 'anim-attack-p');
+    playAnim('anim-p-1', 'anim-attack-p');
+    setTimeout(() => { playAnim('anim-e', 'anim-damage'); shakeScreen(); }, 200);
+
+    log(`【合体技】${title}`, '#ff00ff');
+    log(`問答無用の ${dmg} ダメージ！！`, '#ff3333');
+    currentEnemy.hp -= dmg;
+    endPlayerTurn();
+}
+
+// --- QTEシステム（攻・防 兼用） ---
+function startQTE(part = null, speedMult = null) {
+    if (qteActive && qteFrame) cancelAnimationFrame(qteFrame);
+    document.getElementById('command-area').style.display = 'none';
+    if (part) activeAction.part = part;
+    
+    document.getElementById('qte-area').style.display = 'block';
+    const targetEl = document.getElementById('qte-target');
+    const msgEl = document.getElementById('qte-message');
+    
+    let targetWidth = 30; let speed = 2.0;
+    if (difficulty === 'enjoy') { targetWidth = 45; speed = 1.5; }
+    if (difficulty === 'normal') { targetWidth = 30; speed = 2.4; }
+    if (difficulty === 'kusoge') { targetWidth = 16; speed = 3.8; }
+    
+    if (speedMult) speed *= speedMult;
+    if (activeAction.armageddon) targetWidth = Math.max(8, targetWidth - 14);
+    if (currentEquipId === 'ctarnidd_eye' && activeAction.type === 'defend') targetWidth += 8;
+
+    if (activeAction.type === 'defend') {
+        targetEl.className = 'qte-target defend';
+        msgEl.innerText = '緊急回避！タップで防げ！';
+        msgEl.style.color = '#ff3333';
+    } else {
+        targetEl.className = 'qte-target';
+        msgEl.innerText = 'タイミングを合わせろ！';
+        msgEl.style.color = '#ffeb3b';
+    }
+    
+    targetEl.style.width = targetWidth + '%';
+    targetEl.style.left = (Math.random() * (100 - targetWidth)) + '%';
+    
+    qteActive = true; qtePos = 0; qteDir = 1; qteSpeed = speed;
+
+    if (currentEnemy.invertMsg && activeAction.type === 'attack') {
+        qteDir = -1; qtePos = 99;
+    }
+    
+    function animateQTE() {
+        if (!qteActive) return;
+        qtePos += qteSpeed * qteDir;
+        if (qtePos >= 100) { qtePos = 100; qteDir = -1; }
+        else if (qtePos <= 0) { qtePos = 0; qteDir = 1; }
+        document.getElementById('qte-cursor').style.left = qtePos + '%';
+        qteFrame = requestAnimationFrame(animateQTE);
+    }
+    animateQTE();
+}
+
+function stopQTE() {
+    if (!qteActive) return;
+    qteActive = false;
+    if (qteFrame) cancelAnimationFrame(qteFrame);
+    document.getElementById('qte-area').style.display = 'none';
+    
+    const target = document.getElementById('qte-target');
+    const tLeft = parseFloat(target.style.left);
+    const tWidth = parseFloat(target.style.width);
+    let success = (qtePos >= tLeft && qtePos <= tLeft + tWidth);
+    
+    if (activeAction.type === 'attack') resolveAttack(success);
+    else if (activeAction.type === 'defend') resolveDefend(success);
+}
+
+// --- プレイヤー攻撃解決 ---
+function resolveAttack(qteSuccess) {
+    const actor = party[currentTurn];
+    let dmg = actor.currentAtk + (actor.tempAtk || 0);
+    let isCrit = false;
+    
+    playAnim('anim-p-' + currentTurn, 'anim-attack-p');
+    
+    if (currentEnemy.cloneActive && Math.random() < 0.5) {
+        log(`幻影だ！攻撃がすり抜けた！（分身ギミック）`, '#aaa');
+        endPlayerTurn();
+        return;
+    }
+
+    let isHead = activeAction.part === 'head';
+    if (currentEnemy.invertMsg) { isHead = activeAction.part === 'body'; }
+
+    if (qteSuccess) {
+        dmg = Math.floor(dmg * 1.4);
+        if (isHead) { 
+            let critMult = currentEquipId === 'sange' ? 2.5 : 1.8;
+            if (activeAction.forceCrit) critMult += 0.4; // スキル時の超クリティカルボーナス
+            dmg = Math.floor(dmg * critMult); 
+            isCrit = true; 
+        }
+        if (activeAction.armageddon) { dmg *= 3; isCrit = true; }
+        if (activeAction.double) { dmg *= 2; }
+        log(`【目押し成功！】鮮やかな一撃！`, '#ffeb3b');
+        addUnison(15);
+        if (isCrit) { log(`クリティカルヒット！！`, '#ff3333'); shakeScreen(); addUnison(10); }
+    } else {
+        if (activeAction.forceCrit) {
+            dmg = Math.floor(dmg * 1.2); // スキル使用時の最低保証
+            log(`目押し失敗...だが技の威力で押し切った！`, '#ffeb3b');
+            addUnison(10);
+        } else {
+            log(`目押し失敗...かすり傷。`, '#aaa');
+            dmg = Math.floor(dmg * 0.6);
+            addUnison(5);
+        }
+    }
+
+    setTimeout(() => { playAnim('anim-e', 'anim-damage'); }, 150);
+
+    if (activeAction.part === 'arm') currentEnemy.atk = Math.max(5, currentEnemy.atk - 4);
+    
+    currentEnemy.hp -= dmg;
+    actor.aggro += dmg;
+    const partLabel = activeAction.part === 'head' ? '頭部' : activeAction.part === 'arm' ? '腕' : '胴体';
+    log(`${actor.name} の ${partLabel} への攻撃で ${dmg} ダメージ！`);
+
+    if (currentEnemy.charge && activeAction.part === 'arm') {
+        log(`【部位破壊ブレイク！】敵の大技チャージを阻止した！`, '#00d2ff');
+        shakeScreen(); addUnison(20);
+        currentEnemy.charge = false; currentEnemy.stunned = true;
+    }
+
+    endPlayerTurn();
+}
+
+function endPlayerTurn() {
+    // 連打防止のため即座にコマンドパネルを閉じる
+    document.getElementById('command-area').style.display = 'none';
+    updateBattleUI();
+    currentTurn++;
+    setTimeout(processTurn, 900);
+}
+
+// --- 敵のターンと防御QTE ---
+function enemyAction() {
+    if (!isBattleActive) return;
+
+    if (currentEnemy.stunned) {
+        log(`${currentEnemy.name} は体勢を崩して動けない！`, '#aaa');
+        currentEnemy.stunned = false; endEnemyTurn(); return;
+    }
+
+    // リュカオーン分身展開
+    if (currentEnemy.name === '夜襲のリュカオーン' && currentEnemy.hp < currentEnemy.maxHp * 0.5 && !currentEnemy.cloneTriggered) {
+        currentEnemy.cloneTriggered = true; currentEnemy.cloneActive = true;
+        updateBattleUI();
+        log(`【分身生成】リュカオーンが闇に溶け、分身を作り出した！`, '#ff00ff');
+    }
+
+    // クターニッド深淵反転展開
+    if (currentEnemy.name === '深淵のクターニッド' && currentEnemy.hp < currentEnemy.maxHp * 0.5 && !currentEnemy.invertMsg) {
+        currentEnemy.invertMsg = true;
+        updateBattleUI();
+        log(`【深淵反転】が展開された！弱点部位とQTEの軌道が逆転する！`, '#ff00ff');
+    }
+
+    if (currentEnemy.charge) {
+        playAnim('anim-e', 'anim-attack-e');
+        shakeScreen();
+        log(`【${currentEnemy.ult}】が発動！！！`, '#ff0000');
+        
+        party.forEach((p, idx) => {
+            if (p.hp > 0) {
+                if (p.parry) { 
+                    log(`${p.name} は完璧にパリィした！ノーダメージ！`, '#00d2ff'); addUnison(20); 
+                } else {
+                    let dmg = Math.floor(currentEnemy.atk * 2.5);
+                    if (p.guard) dmg = Math.floor(dmg * 0.5);
+                    p.hp -= dmg; b_noDamage = false;
+                    setTimeout(() => { playAnim('anim-p-' + idx, 'anim-damage'); }, 200);
+                    log(`${p.name} に ${dmg} の致命的ダメージ！`);
+                }
+            }
+        });
+        currentEnemy.charge = false;
+        endEnemyTurn(); return;
+    }
+
+    if (currentEnemy.isBoss && Math.random() < 0.3) {
+        currentEnemy.charge = true; updateBattleUI();
+        log(`【警告】${currentEnemy.name} が大技の構えに入った！腕を狙ってブレイクしろ！`, '#ff0000');
+        shakeScreen(); endEnemyTurn(); return;
+    }
+
+    let targetIdx = 0; let highestAggro = -1;
+    party.forEach((p, idx) => {
+        if (p.hp > 0 && p.aggro > highestAggro) { highestAggro = p.aggro; targetIdx = idx; }
+    });
+    const guardTargetIdx = party.findIndex(p => p.hp > 0 && p.guard);
+    if (guardTargetIdx !== -1) targetIdx = guardTargetIdx;
+
+    activeAction = { type: 'defend', target: targetIdx };
+    const target = party[targetIdx];
+    log(`${currentEnemy.name} の攻撃！狙われたのは ${target.name} だ！`, '#ff6666');
+    
+    playAnim('anim-e', 'anim-attack-e');
+
+    if (target.parry) {
+        log(`${target.name} はパリィで弾き返した！`, '#00d2ff'); shakeScreen(); addUnison(15); endEnemyTurn();
+    } else if (target.luk >= 80 && Math.random() < 0.4) {
+        log(`${target.name} は紙一重で回避した！（LUK効果）`, '#00d2ff'); addUnison(5); endEnemyTurn();
+    } else {
+        setTimeout(() => { 
+            if (isBattleActive) startQTE(null, 1.4); 
+        }, 500);
+    }
+}
+
+function resolveDefend(qteSuccess) {
+    const target = party[activeAction.target];
+    let dmg = currentEnemy.atk;
+
+    if (qteSuccess) {
+        log(`【ジャスト回避！】被害を最小限に抑えた！`, '#00d2ff');
+        dmg = Math.floor(dmg * 0.3);
+        addUnison(10);
+    } else {
+        log(`回避失敗！直撃を受けた！`, '#aaa');
+    }
+    
+    if (target.guard) dmg = Math.floor(dmg * 0.5);
+    
+    target.hp -= dmg;
+    if (dmg > 0) {
+        b_noDamage = false;
+        playAnim('anim-p-' + activeAction.target, 'anim-damage');
+    }
+    log(`${target.name} に ${dmg} のダメージ！`);
+    
+    if (target.hp <= 0 && target.luk >= 50 && Math.random() < 0.5) {
+        target.hp = 1;
+        log(`【奇跡】${target.name} はHP1で踏みとどまった！（LUK効果）`, '#ffeb3b');
+        if (target.quotes && target.quotes.pinch) {
+            showCutin(target.img, target.name, target.quotes.pinch);
+        }
+    }
+    endEnemyTurn();
+}
+
+function endEnemyTurn() {
+    party.forEach(p => { p.parry = false; p.guard = false; });
+    currentTurn = 0;
+    setTimeout(processTurn, 1100);
+}
+</script>
+</body>
+</html>
